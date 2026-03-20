@@ -2,7 +2,7 @@
 	"use strict";
 	
 	// Document ready
-	$(document).on("ready", function(){
+	$(function(){
 		// Load previously stored configs
 		ConfigManager.load();
 		KC3Meta.init("/data/");

@@ -9,7 +9,7 @@
 	var myVersion = chrome.runtime.getManifest().version;
 	
 	// Document ready
-	$(document).on("ready", function(){
+	$(function(){
 		$("#restartNow").on("click", function(){
 			chrome.runtime.reload();
 		});

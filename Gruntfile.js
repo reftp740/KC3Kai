@@ -1,3 +1,13 @@
+// Node 20+ removed util.isRegExp; grunt-contrib-cssmin / clean-css 0.13 still call it.
+(function () {
+	var util = require('util');
+	if (typeof util.isRegExp !== 'function') {
+		util.isRegExp = function (val) {
+			return Object.prototype.toString.call(val) === '[object RegExp]';
+		};
+	}
+})();
+
 module.exports = function(grunt) {
 
 	require('load-grunt-tasks')(grunt);
@@ -71,6 +81,7 @@ module.exports = function(grunt) {
 				expand: true,
 				cwd: 'build/tmp/',
 				src: [
+					'service_worker.js',
 					'assets/css/**/*',
 					'!assets/css/bootstrap.css',
 					'library/helpers/*.js',
@@ -161,7 +172,7 @@ module.exports = function(grunt) {
 			all : {
 				options: {
 					mangle: {
-						except: ['window', 'this']
+						reserved: ['window', 'this']
 					}
 				},
 				files: [{
@@ -236,7 +247,8 @@ module.exports = function(grunt) {
 				options: {
 					fields: {
 						"name": "KanColle Command Center 改",
-						"browser_action": {
+						"minimum_chrome_version": "116",
+						"action": {
 							"default_icon": "assets/img/logo/19.png",
 							"default_popup": "pages/popup/popup.html"
 						}
@@ -249,25 +261,9 @@ module.exports = function(grunt) {
 			manifest_scripts: {
 				options: {
 					fields: {
+						"manifest_version": 3,
 						"background": {
-							"scripts": [
-								"assets/js/global.js",
-								"assets/js/Dexie.min.js",
-								"library/objects.js",
-								"library/managers.js",
-								"library/modules/ChromeSync.js",
-								"library/modules/QuestSync/Sync.js",
-								"library/modules/QuestSync/Background.js",
-								"library/modules/Database.js",
-								"library/modules/Log/Log.js",
-								"library/modules/Log/Background.js",
-								"library/modules/ImageExport.js",
-								"library/modules/Master.js",
-								"library/modules/RemodelDb.js",
-								"library/modules/Meta.js",
-								"library/modules/Translation.js",
-								"library/modules/Service.js"
-							]
+							"service_worker": "service_worker.js"
 						},
 						"content_scripts": [
 							{
@@ -277,7 +273,8 @@ module.exports = function(grunt) {
 								"all_frames": true
 							},
 							{
-								"matches": ["*://play.games.dmm.com/game/kancolle*"],
+								"matches": ["*://*.dmm.com/*"],
+								"include_globs": ["*://www.dmm.com/netgame/*/app_id=854854*", "*://play.games.dmm.com/game/kancolle*"],
 								"css": [
 									"library/injections/dmm.css"
 								],
@@ -313,7 +310,7 @@ module.exports = function(grunt) {
 							},
 							{
 								"matches": ["*://*/kcs2/index.php?api_root=/kcsapi*"],
-								"include_globs": ["*://*.kancolle-server.com/*", "*://192.168.1.*/*", "*://127.0.0.1/*"],
+								"include_globs": ["*://*.kancolle-server.com/*", "*://203.104.209.*/*", "*://125.6.184.*/*", "*://125.6.189.*/*", "*://192.168.1.*/*", "*://127.0.0.1/*"],
 								"js": [
 									"assets/js/global.js",
 									"library/objects.js",
@@ -498,6 +495,33 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-compress');
 	grunt.loadNpmTasks('grunt-webstore-upload');
 	grunt.loadNpmTasks('grunt-modify-json');
+
+	grunt.registerTask('generate-offscreen', 'Write pages/background/offscreen.html for release (MV3)', function() {
+		var scripts = [
+			'assets/js/global.js',
+			'assets/js/Dexie.min.js',
+			'library/objects.js',
+			'library/managers.js',
+			'library/modules/ChromeSync.js',
+			'library/modules/QuestSync/Sync.js',
+			'library/modules/QuestSync/Background.js',
+			'library/modules/Database.js',
+			'library/modules/Log/Log.js',
+			'library/modules/Log/Background.js',
+			'library/modules/ImageExport.js',
+			'library/modules/Master.js',
+			'library/modules/RemodelDb.js',
+			'library/modules/Meta.js',
+			'library/modules/Translation.js',
+			'library/modules/Service.js'
+		];
+		var body = scripts.map(function(p) {
+			return '\t<script type="text/javascript" src="../../' + p + '"></script>';
+		}).join('\n');
+		var html = '<!DOCTYPE html>\n<html lang="en">\n<head>\n\t<meta charset="utf-8">\n\t<title>KC3 Background (offscreen)</title>\n</head>\n<body>\n' +
+			body + '\n</body>\n</html>\n';
+		grunt.file.write('build/tmp/pages/background/offscreen.html', html);
+	});
 	
 	grunt.registerTask('local', [
 		'clean:tmp',
@@ -507,8 +531,9 @@ module.exports = function(grunt) {
 		'jshint:build',
 		'cssmin',
 		'string-replace:allhtml',
-		'htmlmin',
 		'modify_json:manifest_scripts',
+		'generate-offscreen',
+		'htmlmin',
 		'jsonlint:build',
 		'json-minify',
 		'copy:processed',
@@ -533,8 +558,9 @@ module.exports = function(grunt) {
 		'cssmin',
 		'uglify',
 		'string-replace:allhtml',
-		'htmlmin',
 		'modify_json:manifest_scripts',
+		'generate-offscreen',
+		'htmlmin',
 		'modify_json:manifest_info',
 		'jsonlint:build',
 		'json-minify',

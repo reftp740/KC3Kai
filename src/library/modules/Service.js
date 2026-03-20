@@ -13,7 +13,7 @@ To have a consistent timer unaffected by lags on devtools and Chrome tabs
 To ensure all components are synced in real-time without relying on localStorage
 
 The above aspects are imported into the background service, and not necessarily on this file.
-See Manifest File [manifest.json] under "background" > "scripts"
+See [pages/background/offscreen.html] for legacy background script load order
 */
 (function(){
 	"use strict";
@@ -26,10 +26,10 @@ See Manifest File [manifest.json] under "background" > "scripts"
 	switch (ConfigManager.updateNotification) {
 		case 2: // Open update status page
 			if (typeof localStorage.kc3version == "undefined"){
-				window.open("../../pages/update/update.html#installed", "kc3_update_page");
+				chrome.tabs.create({ url: chrome.runtime.getURL("pages/update/update.html#installed"), active: true });
 			} else {
 				if (localStorage.kc3version != chrome.runtime.getManifest().version) {
-					window.open("../../pages/update/update.html#updated", "kc3_update_page");
+					chrome.tabs.create({ url: chrome.runtime.getURL("pages/update/update.html#updated"), active: true });
 				}
 			}
 			break;
@@ -632,6 +632,18 @@ See Manifest File [manifest.json] under "background" > "scripts"
 	and execute what they want if applicable
 	------------------------------------------*/
 	chrome.runtime.onMessage.addListener(function(request, sender, callback){
+		// MV3: service worker forwards messages with __kc3BgForward; restore original sender
+		if (request && request.__kc3BgForward) {
+			var fwd = request.__kc3Sender;
+			request = request.__kc3Payload;
+			sender = {
+				tab: fwd && fwd.tab,
+				frameId: fwd && fwd.frameId,
+				id: fwd && fwd.id,
+				url: fwd && fwd.url,
+				origin: fwd && fwd.origin
+			};
+		}
 		// Check if message is intended for this script
 		if( (request.identifier || false) == "kc3_service"){
 			// Log message contents and sender for debugging
@@ -714,39 +726,9 @@ See Manifest File [manifest.json] under "background" > "scripts"
 		}
 	});
 	
-	/* To bypass gadget server access restriction outside of jp area.
-	Listen to webRequest.onBeforeRequest and redirect all requests sent to gadget server,
-	to a public cache server, which now hosted on Github Pages.
-	No longer needed since 2024-12-03 gadget server hosted behind cloudfront CDN.
+	/* Gadget redirect via webRequest was removed for Manifest V3 (blocking webRequest unavailable).
+	 * Optional cache redirect was deprecated: gadget server is on CDN since 2024-12-03.
 	------------------------------------------*/
-	if(chrome.webRequest) {
-		// Note: gadget server IP address also configured in permissions of mainifest.json
-		const gadgetServerHost = "w00g.kancolle-server.com/";
-		const gadgetRequestListener = function(details) {
-			if(ConfigManager.dmm_redirgadget) {
-				const cacheServerBaseUrl = ConfigManager.dmm_gadgetcache || "https://kcwiki.github.io/cache/";
-				const path = details.url.split(gadgetServerHost)[1] || "";
-				// do not redirect information pages and some scripts for viewing rankers monthly,
-				// since currently default cache server has not cached these assets yet
-				if(path.includes("kcscontents/information/")
-					|| path.includes("kcscontents/script/jquery")
-					|| path.includes("kcscontents/script/jss")
-					|| path.includes("kcscontents/script/smooth")
-					|| path.includes("kcscontents/script/rollover")
-				) return {};
-				// console.debug("Redirecting gadget " + details.type + " request:", details.url, "to:", cacheServerBaseUrl);
-				return {
-					redirectUrl: [cacheServerBaseUrl, (cacheServerBaseUrl.endsWith("/") ? "" : "/"), path].join("")
-				};
-			} else {
-				return {};
-			}
-		};
-		chrome.webRequest.onBeforeRequest.addListener(gadgetRequestListener, {
-			urls: ["*://" + gadgetServerHost + "*"],
-			types: ["main_frame", "sub_frame", "font", "image", "script", "stylesheet"],
-		}, ["blocking"]);
-	}
 	
 	/* On Web Storage (localStorage here) Changed
 	Reload our ConfigManager as soon as possible on the key `config` changed,
@@ -799,7 +781,7 @@ See Manifest File [manifest.json] under "background" > "scripts"
 	// Chrome Desktop Notifications: Box Click
 	chrome.notifications.onClicked.addListener(function(notificationId){
 		if (notificationId == "kc3kai_update") {
-			window.open("../../pages/update/update.html", "kc3_update_page");
+			chrome.tabs.create({ url: chrome.runtime.getURL("pages/update/update.html"), active: true });
 			chrome.notifications.clear("kc3kai_update");
 		}
 	});

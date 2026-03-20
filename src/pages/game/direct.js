@@ -32,12 +32,13 @@
 				expirationDate: getInfExpirationDate(),
 				path: "/",
 			}, function(){
-				window.location.href = htmlLink || "https://play.games.dmm.com/game/kancolle";
+				const url = htmlLink || "https://play.games.dmm.com/game/kancolle";
+				chrome.tabs.update({ url: url });
 			});
 		});
 	}
 	
-	$(document).on("ready", function(){
+	$(function(){
 		// Load previously stored configs
 		ConfigManager.load();
 		KC3Meta.init("../../data/");

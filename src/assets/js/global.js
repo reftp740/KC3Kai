@@ -2,8 +2,10 @@
 |*** Global                     |
 \*******************************/
 /* GOOGLE ANALYTICS
+   MV3 extension CSP disallows remote script-src; skip GA in any extension context.
 -------------------------------*/
-if (!window.NO_GA) {
+var kc3SkipExternalGA = typeof chrome === "object" && chrome.runtime && typeof chrome.runtime.id === "string";
+if (!window.NO_GA && !kc3SkipExternalGA) {
 	var _gaq = _gaq || [];
 	_gaq.push(['_setAccount', 'UA-9789944-12']);
 	(function() {

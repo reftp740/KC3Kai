@@ -9,7 +9,7 @@
 	Them knowing how many hours and minutes left at a glance is good enough.
 	*/
 
-	$(document).on("ready", function(){
+	$(function(){
 		// Load previously stored configs
 		ConfigManager.load();
 		KC3Meta.init("../../data/");

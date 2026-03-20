@@ -42,6 +42,17 @@
 
   Log.onChromeMessage = (request, sender, callback) => {
     try {
+      if (request && request.__kc3BgForward) {
+        const fwd = request.__kc3Sender;
+        request = request.__kc3Payload;
+        sender = {
+          tab: fwd && fwd.tab,
+          frameId: fwd && fwd.frameId,
+          id: fwd && fwd.id,
+          url: fwd && fwd.url,
+          origin: fwd && fwd.origin
+        };
+      }
       const { identifier, action } = request;
       if (identifier === 'kc3_log') {
         return KC3Log.messaging[action](request, callback);

@@ -92,7 +92,7 @@ function ActivateGame(){
 	return true;
 }
 
-$(document).on("ready", function(){
+$(function(){
 	// Initialize data managers
 	ConfigManager.load();
 	KC3Master.init();

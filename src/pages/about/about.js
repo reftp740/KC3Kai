@@ -5,7 +5,7 @@
 	var myVersion = chrome.runtime.getManifest().version;
 	
 	// Document ready
-	$(document).on("ready", function(){
+	$(function(){
 		// Show installed version
 		$(".verNum").text(myVersion);
 		

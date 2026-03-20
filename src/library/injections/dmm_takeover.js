@@ -162,7 +162,7 @@
 			// New styles for post-https play.games.dmm.com lazy loading
 			$("#root > .gamesResetStyle").css({ "background-color": 'unset' });
 			$("#root > div > header, #root > div > footer, #root > div > aside").hide();
-			$(document).on("ready", this.resizeGameFrameFinal);
+			$(this.resizeGameFrameFinal.bind(this));
 			$(window).on("load", this.resizeGameFrameFinal);
 
 			var self = this;

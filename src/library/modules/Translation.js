@@ -223,18 +223,61 @@
 					url : repo+'lang/data/' +language+ '/' + filename + '.json',
 					async: false
 				}).responseText;
-				translation = JSON.parse(jsonText);
-				if (track_source) {
-					this.addTags(translation, language);
+
+				var emptyResponse = (jsonText == null || (typeof jsonText === "string" && jsonText.trim() === ""));
+				if (emptyResponse) {
+					// Missing file / failed fetch → responseText is undefined or "" (JSON.parse(undefined) throws)
+					if (extendEnglish && language !== "en") {
+						translation = null;
+					} else if (language !== "en") {
+						console.warn("KC3Translation: missing or empty " + language + "/" + filename
+							+ ".json, falling back to en");/*RemoveLogging:skip*/
+						jsonText = $.ajax({
+							url : repo+'lang/data/en/' + filename + '.json',
+							async: false
+						}).responseText;
+						if (jsonText == null || (typeof jsonText === "string" && jsonText.trim() === "")) {
+							throw new SyntaxError("Missing translation file: " + filename);
+						}
+						translation = JSON.parse(jsonText);
+						if (track_source) {
+							this.addTags(translation, "en");
+						}
+					} else {
+						throw new SyntaxError("Missing translation file: " + filename);
+					}
+				} else {
+					translation = JSON.parse(jsonText);
+					if (track_source) {
+						this.addTags(translation, language);
+					}
 				}
 			} catch (e) {
 				const debugJsonPos = function(e) {
-					if(e.message.includes("at position ")) {
+					if (typeof jsonText === "string" && e.message.includes("at position ")) {
 						const posIdx = Number(e.message.match(/at position (\d+)/)[1]);
 						console.debug(e.message + " of [" + language + "/" + filename + ".json]: ["
 							+ jsonText.substring(posIdx - 1, posIdx + 2) + "] at [" + jsonText.substring(posIdx - 32, posIdx + 32) + "]");
 					}
 				};
+				// tcn/jp ships etc. use extendEnglish=false; invalid primary JSON → try English once
+				if (e instanceof SyntaxError && language !== "en" && !extendEnglish) {
+					try {
+						var enFallback = $.ajax({
+							url : repo+'lang/data/en/' + filename + '.json',
+							async: false
+						}).responseText;
+						if (enFallback != null && String(enFallback).trim() !== "") {
+							translation = JSON.parse(enFallback);
+							console.warn("KC3Translation: invalid " + language + "/" + filename
+								+ ".json (" + e.message + "), using en");/*RemoveLogging:skip*/
+							if (track_source) {
+								this.addTags(translation, "en");
+							}
+							return $.extend(true, translationBase, translation);
+						}
+					} catch (e2) { /* fall through to normal handling */ }
+				}
 				// As EN can be used, fail-safe for other JSON syntax error
 				if (e instanceof SyntaxError && extendEnglish && language !== "en"){
 					console.warn("Loading translation failed", filename, language, e);/*RemoveLogging:skip*/
